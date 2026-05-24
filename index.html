@@ -23,9 +23,6 @@
             box-shadow: 0 2px 0px #cbd5e1;
             transform: translateY(6px);
         }
-        .card-active {
-            box-shadow: 0 8px 0px #93c5fd;
-        }
         .font-kids {
             font-weight: 700;
         }
@@ -40,7 +37,7 @@
                 <span class="text-3xl">🌟</span>
                 <div>
                     <h1 class="text-xl md:text-2xl font-black text-emerald-600 tracking-wide">重組句子拼拼樂</h1>
-                    <p class="text-xs text-slate-400 font-medium">根據《星願小王子》與《樂思》精選設計</p>
+                    <p class="text-xs text-slate-400 font-medium">根據《星願小王子》與《樂思重組句子》精選設計</p>
                 </div>
             </div>
             
@@ -108,6 +105,16 @@
             </div>
         </div>
 
+        <!-- 獨立的「💡 提示對照區」：完美解決字卡重置與覆蓋 Bug -->
+        <div id="hint-strip" class="hidden bg-indigo-50 border-2 border-dashed border-indigo-200 rounded-3xl p-4 flex flex-col gap-2 shadow-sm">
+            <div class="flex items-center gap-2 text-indigo-700 text-xs font-black tracking-widest select-none">
+                <span>💡</span> 拼圖參考對照：
+            </div>
+            <div id="hint-words-container" class="flex flex-wrap gap-2 justify-center py-1">
+                <!-- 對照詞卡動態渲染於此 -->
+            </div>
+        </div>
+
         <!-- 原字卡池 (亂序) -->
         <div class="bg-amber-50/50 rounded-3xl p-5 md:p-6 border-2 border-dashed border-amber-200 min-h-[120px] flex flex-col justify-center items-center gap-4 relative">
             <div class="absolute top-2 left-3 text-xs text-amber-500/70 font-bold tracking-widest flex items-center gap-1 select-none">
@@ -127,7 +134,7 @@
                     <span>💡</span> 提示答案
                 </button>
                 <button onclick="speakCurrentSentence()" class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold border-2 border-slate-200 active:scale-95 transition-all text-sm md:text-base" title="聽句子讀音">
-                    <i data-lucide="volume-1" class="w-5 h-5 inline"></i> 讀音
+                    <i data-lucide="volume-1" class="w-5 h-5 inline"></i> 聽讀音
                 </button>
                 <button onclick="resetCurrentQuestion()" class="px-4 py-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-2xl font-bold border-2 border-rose-100 active:scale-95 transition-all text-sm md:text-base">
                     重置
@@ -161,7 +168,7 @@
 
             <p id="modal-message" class="text-slate-500 text-sm md:text-base mb-6 font-medium">你獲得了 10 顆小星星！繼續加油！</p>
             
-            <button onclick="closeModalAndNext()" id="modal-next-btn" class="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-lg shadow-lg shadow-emerald-200 active:scale-95 transition-all flex items-center justify-center gap-2">
+            <button onclick="closeModalAndNext()" id="modal-next-btn" class="w-full py-4 bg-emerald-50 hover:bg-emerald-600 text-white rounded-2xl font-black text-lg shadow-lg shadow-emerald-200 active:scale-95 transition-all flex items-center justify-center gap-2">
                 <span id="modal-btn-text">下一題</span>
                 <i id="modal-btn-icon" data-lucide="arrow-right" class="w-5 h-5"></i>
             </button>
@@ -223,88 +230,133 @@
     <script>
         // 題目資料庫：直接萃取自提供的《星願小王子》與《樂思》PDF 內容，並依據難度星級分類
         const questionDatabase = {
-            // ⭐ 一星 (基礎句式：的/地形容詞、數量詞、基本陳述句)
+            // ⭐ 一星 (基礎句式：的/地形容詞、數量詞、基本陳述句、得字句)
             1: [
                 {
-                    context: "媽媽去哪裡買東西呢？",
+                    context: "媽媽去哪裡買東西呢？ (陳述句:「到」)",
                     correct: ["媽媽", "到", "商場", "購物", "。"],
                     hint: "提示：媽媽「到」什麼地方「購物」？"
                 },
                 {
-                    context: "小狗在吃什麼好吃的東西？",
+                    context: "小狗在吃什麼好吃的東西？ (數量詞)",
                     correct: ["小狗", "咬着", "一塊", "鮮肉", "。"],
                     hint: "提示：有數量詞「一塊」。"
                 },
                 {
-                    context: "姐姐穿上的裙子怎麼樣？",
+                    context: "姐姐穿上的裙子怎麼樣？ (形容詞「的」)",
                     correct: ["姐姐", "穿上了", "一條", "漂亮的", "裙子", "。"],
                     hint: "提示：用「漂亮的」來形容「裙子」哦！"
                 },
                 {
-                    context: "同學們在操場上做什麼？",
-                    correct: ["同學們", "在", "操場上", "快樂地", "唱歌", "。"],
-                    hint: "提示：動作「唱歌」的前面要放「快樂地」。"
+                    context: "小鴨子在池塘做甚麼？ (形容詞「地」)",
+                    correct: ["小鴨子", "快樂地", "在", "池塘", "嬉水", "。"],
+                    hint: "提示：動作「嬉水」的前面要放「快樂地」。"
                 },
                 {
-                    context: "河水是怎樣流動的？",
+                    context: "弟弟長得高大嗎？ (「得」字句)",
+                    correct: ["弟弟", "長", "得", "很高大", "。"],
+                    hint: "提示：主語「弟弟」+ 動作「長」+「得」+ 形容動作「很高大」。"
+                },
+                {
+                    context: "河水是怎樣流動的？ (形容詞「地」)",
                     correct: ["河水", "慢慢地", "流動", "。"],
                     hint: "提示：用「慢慢地」修飾「流動」的動作。"
+                },
+                {
+                    context: "同學們在操場上做什麼？ (陳述句:「在」)",
+                    correct: ["同學們", "在", "操場上", "快樂地", "唱歌", "。"],
+                    hint: "提示：在什麼地方？「在操場上」。"
+                },
+                {
+                    context: "爸爸去哪裡釣魚？ (陳述句:「到」)",
+                    correct: ["爸爸", "到", "海邊", "釣魚", "。"],
+                    hint: "提示：爸爸「到」海邊「釣魚」。"
                 }
             ],
-            // ⭐⭐ 二星 (進階句式：時態助詞、感歎句、疑問句、「把/被」字句)
+            // ⭐⭐ 二星 (進階句式：時態助詞、感歎句、疑問句、「把/被」字句、比喻句)
             2: [
                 {
-                    context: "班長被誰責罰了？",
+                    context: "班長被誰責罰了？ (「被」字被動句)",
                     correct: ["班長", "被", "老師", "責罰", "。"],
                     hint: "提示：這是一個「被動句」，被動對象「班長」放在最前面。"
                 },
                 {
-                    context: "姐姐對她的頭髮做了什麼？",
+                    context: "姐姐對她的頭髮做了什麼？ (「把」字處置句)",
                     correct: ["姐姐", "把", "長髮", "剪短", "。"],
                     hint: "提示：這是一個「把字句」，「長髮」要放在「把」的後面。"
                 },
                 {
-                    context: "媽媽帶著行李，她的神態怎麼樣？",
+                    context: "媽媽帶著行李，她的神態怎麼樣？ (時態助詞「著」)",
                     correct: ["媽媽", "拖着", "沉重的", "行李箱", "。"],
                     hint: "提示：時態助詞「着」要緊跟在動作「拖」後面。"
                 },
                 {
-                    context: "大家向對方提出明天的回校詢問：",
+                    context: "大家向對方提出明天的回校詢問： (疑問句「嗎」)",
                     correct: ["同學們", "明天", "會", "回學校", "嗎", "？"],
                     hint: "提示：這是疑問句，要把「嗎」放在最後並加上問號。"
                 },
                 {
-                    context: "看見美麗的地方，忍不住感歎：",
+                    context: "看見美麗的地方，忍不住感歎： (感歎句「啊」)",
                     correct: ["這裏的", "風景", "好美", "啊", "！"],
                     hint: "提示：這是感歎句，最後要放「啊」和感歎號！"
+                },
+                {
+                    context: "形容他的臉色： (比喻句「像」)",
+                    correct: ["他的", "臉", "紅得", "像", "火焰", "。"],
+                    hint: "提示：這是一個比喻句，把臉紅比喻為「火焰」。"
+                },
+                {
+                    context: "媽媽叮囑哥哥拿雨傘： (陳述句:請/叫)",
+                    correct: ["媽媽", "叫", "哥哥", "帶", "雨傘", "。"],
+                    hint: "提示：誰叫誰做甚麼？「媽媽叫哥哥帶雨傘」。"
+                },
+                {
+                    context: "電話遺落在了哪裡？ (「被」字句)",
+                    correct: ["電話", "被", "留在", "座椅上", "。"],
+                    hint: "提示：被動句，「電話」被留在「座椅上」。"
                 }
             ],
-            // ⭐⭐⭐ 三星 (挑戰/複句句式：比喻句、反問句、並列複句、條件複句)
+            // ⭐⭐⭐ 三星 (挑戰/複句句式：反問句、並列複句、條件複句、遞進複句、承接複句)
             3: [
                 {
-                    context: "形容爸爸非常焦急著急的樣子：",
+                    context: "形容爸爸非常焦急著急的樣子： (高階比喻句)",
                     correct: ["緊張的", "爸爸", "像", "熱鍋上的", "螞蟻", "。"],
                     hint: "提示：這是一個比喻句，把爸爸比作螞蟻。"
                 },
                 {
-                    context: "小寶寶為什麼不願意喝牛奶呢？",
+                    context: "小寶寶為什麼不願意喝牛奶呢？ (反問句「怎麼...呢」)",
                     correct: ["小寶寶", "怎麼", "不肯", "喝奶", "呢", "？"],
                     hint: "提示：反問句，「怎麼」放在人物後，「呢」放在句末。"
                 },
                 {
-                    context: "中秋夜，我們一邊賞月一邊做什麼？",
+                    context: "中秋夜，我們一邊賞月一邊做什麼？ (並列複句「一面...一面」)",
                     correct: ["我們", "一面", "賞月", "，", "一面", "吃月餅", "。"],
                     hint: "提示：並列複句，「一面......一面......」表示兩件事同時進行。"
                 },
                 {
-                    context: "雨水對植物來說非常重要，只要......",
+                    context: "雨水對植物來說非常重要，只要...... (條件複句)",
                     correct: ["只要", "有", "雨水", "，", "植物", "就", "不會", "枯死", "。"],
                     hint: "提示：條件複句，「只要......就......」配對。"
                 },
                 {
-                    context: "溫暖的春風吹拂著小貓的神態：",
-                    correct: ["懶洋洋的", "小貓", "在", "陽台", "曬太陽", "。"],
-                    hint: "提示：先寫形容詞「懶洋洋的」形容「小貓」。"
+                    context: "颱風越來越近，天氣會有什麼變化？ (承接複句「愈...愈...」)",
+                    correct: ["颱風", "愈", "接近", "香港", "，", "天氣", "就", "愈差", "。"],
+                    hint: "提示：承接複句，「愈接近......就愈差」。"
+                },
+                {
+                    context: "他跑步跑到了終點後發生了什麼？ (承接複句「剛...就...」)",
+                    correct: ["他", "剛", "跑到", "終點", "，", "就", "暈倒", "了", "。"],
+                    hint: "提示：兩件事緊接發生，用「剛......就......」連接。"
+                },
+                {
+                    context: "吃蘋果時的先後步驟： (承接複句「先...接著」)",
+                    correct: ["你", "先把", "蘋果", "去皮", "，", "接著", "切件", "。"],
+                    hint: "提示：動作有先後次序，「先......接著......」。"
+                },
+                {
+                    context: "奶奶學習電腦之後去做了什麼？ (遞進複句「更」)",
+                    correct: ["奶奶", "努力", "學習", "電腦", "，", "更到", "社區中心", "當", "導師", "。"],
+                    hint: "提示：程度加深，後半句用「更到......當導師」。"
                 }
             ]
         };
@@ -317,7 +369,6 @@
         
         let shuffledCards = []; // 目前打亂的卡片 [{id, text}]
         let answerCards = [];   // 小朋友排好的卡片 [{id, text}]
-        let showHintOverlay = false; // 是否顯示半透明提示答案
         let currentFeedbackType = 'correct'; // 'correct' | 'wrong-reveal'
 
         // 初始化
@@ -354,14 +405,14 @@
             document.getElementById('total-questions').innerText = list.length;
             document.getElementById('question-hint').innerText = q.context;
 
-            // 重置本題狀態
+            // 重置本題狀態與提示區
             answerCards = [];
-            showHintOverlay = false;
+            document.getElementById('hint-strip').classList.add('hidden');
 
             const originalWords = [...q.correct];
             let cardsWithId = originalWords.map((word, index) => ({ id: index, text: word }));
             
-            // 隨機打亂演算法 (Fisher-Yates) 直至與原句順序不完全一致
+            // 隨機打亂字卡
             let isSame = true;
             while (isSame && cardsWithId.length > 1) {
                 for (let i = cardsWithId.length - 1; i > 0; i--) {
@@ -384,33 +435,22 @@
             poolZone.innerHTML = '';
             answerZone.innerHTML = '';
 
-            if (answerCards.length === 0 && !showHintOverlay) {
+            if (answerCards.length === 0) {
                 placeholder.classList.remove('hidden');
             } else {
                 placeholder.classList.add('hidden');
             }
 
-            // 1. 如果啟用了「💡提示答案」，在答案區渲染一層淡淡的虛線目標卡
-            if (showHintOverlay) {
-                const currentCorrectList = questionDatabase[currentDifficulty][currentQuestionIndex].correct;
-                currentCorrectList.forEach((word) => {
-                    const shadowCard = document.createElement('div');
-                    shadowCard.className = "px-4 py-3 md:px-5 md:py-4 bg-slate-100 text-slate-300 border-2 border-dashed border-slate-200 rounded-2xl font-kids text-lg md:text-2xl select-none";
-                    shadowCard.innerText = word;
-                    answerZone.appendChild(shadowCard);
-                });
-            } else {
-                // 2. 正常渲染選入「答案區」的字卡
-                answerCards.forEach((card) => {
-                    const cardBtn = document.createElement('button');
-                    cardBtn.className = `px-4 py-3 md:px-5 md:py-4 bg-emerald-50 text-emerald-600 border-2 border-emerald-400 rounded-2xl font-kids text-lg md:text-2xl active:scale-95 transition-all card-shadow flex items-center justify-center`;
-                    cardBtn.innerText = card.text;
-                    cardBtn.onclick = () => removeCardFromAnswer(card);
-                    answerZone.appendChild(cardBtn);
-                });
-            }
+            // 1. 正常渲染選入「答案區」的字卡
+            answerCards.forEach((card) => {
+                const cardBtn = document.createElement('button');
+                cardBtn.className = `px-4 py-3 md:px-5 md:py-4 bg-emerald-50 text-emerald-600 border-2 border-emerald-400 rounded-2xl font-kids text-lg md:text-2xl active:scale-95 transition-all card-shadow flex items-center justify-center`;
+                cardBtn.innerText = card.text;
+                cardBtn.onclick = () => removeCardFromAnswer(card);
+                answerZone.appendChild(cardBtn);
+            });
 
-            // 3. 渲染「字卡池」中剩餘的字卡
+            // 2. 渲染「字卡池」中剩餘的字卡
             shuffledCards.forEach((card) => {
                 const isSelected = answerCards.some(ac => ac.id === card.id);
                 const cardBtn = document.createElement('button');
@@ -429,12 +469,6 @@
         // 點擊字卡：從池子移入答案區
         function selectCardToAnswer(card) {
             playSound('click');
-            
-            if (showHintOverlay) {
-                showHintOverlay = false;
-                answerCards = [];
-            }
-
             answerCards.push(card);
             renderCards();
         }
@@ -446,16 +480,27 @@
             renderCards();
         }
 
-        // 💡 提示功能
+        // 💡 提示對照功能 (在下方展示對照，完全不會重置已選卡片，完美解決 Bug)
         function showHelpHint(shouldSpeak = true) {
             if (shouldSpeak) playSound('click');
             const q = questionDatabase[currentDifficulty][currentQuestionIndex];
             
-            showHintOverlay = true;
-            renderCards();
+            const hintStrip = document.getElementById('hint-strip');
+            const container = document.getElementById('hint-words-container');
+            container.innerHTML = '';
+            
+            // 動態生成正確的參考影子字卡
+            q.correct.forEach(word => {
+                const span = document.createElement('span');
+                span.className = "px-3 py-1.5 bg-white text-indigo-400 border border-indigo-200 rounded-xl font-bold text-sm md:text-base select-none shadow-sm";
+                span.innerText = word;
+                container.appendChild(span);
+            });
+            
+            hintStrip.classList.remove('hidden');
 
             if (shouldSpeak) {
-                speakText(q.hint || "跟着影子排排看！");
+                speakText(q.hint || "跟我一起讀：");
             }
         }
 
@@ -477,16 +522,15 @@
 
             if (answerCards.length < correctOrder.length) {
                 playSound('wrong');
-                // 没排完直接判定錯誤，顯示正確答案
                 currentFeedbackType = 'wrong-reveal';
                 showFeedbackModal('wrong-reveal', correctOrder.join(''));
                 return;
             }
 
-            // 比對順序
+            // 安全比對順序 (防止 undefined text 崩潰)
             let isAllCorrect = true;
             for (let i = 0; i < correctOrder.length; i++) {
-                if (answerCards[i].text !== correctOrder[i]) {
+                if (!answerCards[i] || answerCards[i].text !== correctOrder[i]) {
                     isAllCorrect = false;
                     break;
                 }
